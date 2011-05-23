@@ -4,27 +4,37 @@ import numpy
 from pbrainlib.gtkutils import str2num_or_err, simple_msg, error_msg, \
      not_implemented, yes_or_no, FileManager, select_name, get_num_range, Dialog_FileSelection, Dialog_FileChooser, get_num_value
 
+from data import EEGWeb, EEGFileSystem, EOI, Amp, Grids
+from file_formats import FileFormat_BNI, W18Header, FileFormat_AxonAscii, FileFormat_NeuroscanAscii, FileFormat_AlphaomegaAscii, NeuroscanEpochFile
+
+
 
 import pygtk
 pygtk.require('2.0')
 import gtk
 
+
+
 class Pbrain2:
+
+    self.extmap = { '.w18' : load_w18,
+           '.bni' : load_bmsi,
+           '.params' : load_params,
+           '.epoch' : load_epoch,
+           '.axonascii' : load_axonascii,
+           '.neuroscanascii' : load_neuroscanascii,
+           '.alphaomegaascii' : load_alphaomegaascii
+           }
+
+
+
     # This is a callback function. The data arguments are ignored
     # in this example. More on callbacks below.
     def hello(self, widget, data=None):
         print "Hello World"
 
     def delete_event(self, widget, event, data=None):
-        # If you return FALSE in the "delete_event" signal handler,
-        # GTK will emit the "destroy" signal. Returning TRUE means
-        # you don't want the window to be destroyed.
-        # This is useful for popping up 'are you sure you want to quit?'
-        # type dialogs.
         print "delete event occurred"
-
-        # Change FALSE to TRUE and the main window will not be destroyed
-        # with a "delete_event".
         return False
 
     def destroy(self, widget, data=None):
@@ -64,45 +74,35 @@ class Pbrain2:
             error_msg(
                 'Cannot find %s' % fullpath,
                 title='Error',
-                parent=Shared.windowMain.widget)
+                parent=self.win)
             
         basename, ext = os.path.splitext(fullpath)
-        if not extmap.has_key(ext.lower()):
+        if not self.extmap.has_key(ext.lower()):
             error_msg(
                 'Do not know how to handle extension %s in %s' % (ext, fullpath),
                 title='Error',
-                parent=Shared.windowMain.widget)
+                parent=self.win)
             
             return
         else:
-            loader = extmap[ext.lower()]
+            loader = self.extmap[ext.lower()]
             try: eeg = loader(fullpath)
             except ValueError, msg:
                 msg = exception_to_str('Error loading EEG' )
                 error_msg(msg, title='Error loading EEG',
-                          parent=Shared.windowMain.widget)
+                          parent=self.win)
                 return
             else:
                 if eeg is None: return 
 
         print "on_menuFileOpen_activate: eeg ext is ", ext
         if (eeg.get_file_type() != 1): # hack -- .bnis do not need .amp files
-            if len(eeg.amps)>0:
-                names = [os.path.split(fullname)[-1] for fullname in eeg.amps]
-                name = select_name(names, 'Pick the AMP file')
-                if name is None: return
-                else:
-                    amp = eeg.get_amp(name)
-                    
-            else:
-                amp = eeg.get_amp()
-        else:
             amp = eeg.get_amp()
-        if amp.message is not None:
-            simple_msg(amp.message, title='Warning',
-                       parent=Shared.windowMain.widget)
+            if amp.message is not None:
+                simple_msg(amp.message, title='Warning',
+                           parent=self.win)
             
-        self.load_eeg(eeg)
+        #self.load_eeg(eeg)
         
         return False
         
